@@ -12,7 +12,7 @@ Add environment variables on Windows for C:\Python27, C:\Python27\Scripts
 Install libs
 
 ```
-pip install pipywin32
+pip install pypiwin32
 pip install Pillow
 ```
 
