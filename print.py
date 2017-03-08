@@ -2,23 +2,89 @@ import win32ui
 import win32print, pywintypes, win32con
 from PIL import Image, ImageWin
 import sys, getopt
+import subprocess
 
-def main(argv):
-  inputfile = 'C:/Users/sci/Downloads/cat.jpg'
-  try:
-    opts, args = getopt.getopt(argv,"hi:",["ifile="])
-  except getopt.GetoptError:
+def help():
     print 'print.py -i <inputfile>'
+    print '-i <inputfile>, --ifile <inputfile>'
+    print '\t input file to print'
+    print '-f <folder>, --sambafolder <folder>'
+    print '\t use samba if the input file is on a shared samba folder'
+    print '\t the samba path should be in the form ' + r'\\192.168.1.152\smilecooker' 
+    print '-u <user>, --sambauser <user>'
+    print '\t samba user should be in the form ' + r'whatEver\myuser'
+    print '\t if you run into 1332 error, try adding ' + r'whatEver\ before user'
+    print '-p <pass>, --sambapassword <pass>'
+    print '\t samba user password'
+    print '-d <letter>, --sambadriveletter <letter>'
+    print '\t mounting letter for the samba folder, should be in the form "x:"'
+    print '-h <printer>, --printer <printer>'
+    print '\t name of the printer. Default is windows default printer.'
+    print '-w <width>, --width <width>'
+    print '\t Paper width in 0.1mm'
+    print '-l <length>, --length <length>'
+    print '\t Paper length in 0.1mm'
+    print '-r <angle>, --rotate <angle>'
+    print '\t Rotate media of angle in degree: 90, 180, ...'
+    print '-o <value>, --object-fit <value>'
+    print '\t Similar to css object-fit. Available values are \'cover\' or \'contain\''
+    print '\nThis script is developed to be used from linux.'
+    print 'You can install this script on windows, and run it from a linux bash with a command like: '
+    print r'winexe -U HOME/windowsuser%windowspassword //192.168.1.153 \'C:\Python27\python.exe C:\Python27\Scripts\print.py -i "x:\mypicture.jpg" --sambafolder "\\192.168.1.152\smilecooker" --sambauser "whatEver\user" --sambapassword "password" --sambadriveletterd "x:"\''
+   
+def main(argv):
+  inputfile = r'C:\Users\sci\Downloads\dbch-print.jpg'
+  bUseSambaFolder = False
+  sambaFolder = r'\\192.168.1.152\smilecooker'
+  sambaUser = r'whatEver\guest'
+  sambaPassword = r'guest'
+  sambaDriveLetter = r'x:'
+  printer_name = ''
+  paperWidth = 360
+  paperLength = 360
+  rotate = 0
+  objectFit = 'cover'
+  
+  try:
+    opts, args = getopt.getopt(argv,"hi:f:u:p:d:h:w:l:r:o:",["ifile=", "sambafolder=", "sambauser=", "sambapassword=", "sambadriveletter=", "printer=", "width=", "length=", "rotate=", "object-fit="])
+  except getopt.GetoptError:
+    help()
     sys.exit(2)
   for opt, arg in opts:
     if opt == '-h':
-       print 'print.py -i <inputfile>'
+       help()
        sys.exit()
     elif opt in ("-i", "--ifile"):
        inputfile = arg
+    elif opt in ("-f", "--sambafolder"):
+       sambaFolder = arg
+       bUseSambaFolder = True
+    elif opt in ("-u", "--sambauser"):
+       sambaUser = arg
+    elif opt in ("-p", "--sambapassword"):
+       sambaPassword = arg
+    elif opt in ("-d", "--sambadriveletter"):
+       sambaDriveLetter = arg
+    elif opt in ("-h", "--printer"):
+       printer_name = arg
+    elif opt in ("-w", "--width"):
+       paperWidth = int(arg)
+    elif opt in ("-l", "--length"):
+       paperLength = int(arg)
+    elif opt in ("-r", "--rotate"):
+       rotate = int(arg)
+    elif opt in ("-o", "--object-fit"):
+       if arg == 'cover' or arg == 'contain':
+           objectFit = arg
+       else:
+           print 'Value ' + arg + ' is not available for object-fit. Possible values are \'cover\' or \'contain\''
   print 'Input file is ', inputfile
-
-
+  sambaCommand = r'net use ' + sambaDriveLetter + ' ' + sambaFolder + ' /user:' + sambaUser + ' ' + sambaPassword
+  if bUseSambaFolder:
+    print 'Input samba command is ', sambaCommand
+    subprocess.call(sambaCommand, shell=True)
+  if printer_name == '':
+    printer_name = win32print.GetDefaultPrinter ()
      
   #
   # Constants for GetDeviceCaps
@@ -43,8 +109,7 @@ def main(argv):
   #
   PHYSICALOFFSETX = 112
   PHYSICALOFFSETY = 113
-
-  printer_name = win32print.GetDefaultPrinter ()
+  
   file_name = inputfile
 
   #
@@ -57,7 +122,6 @@ def main(argv):
   #  and assess the printable size of the paper.
   #
 
- 
   printer = win32print.OpenPrinter(printer_name, {'DesiredAccess': win32print.PRINTER_ALL_ACCESS})
   d = win32print.GetPrinter(printer, 2)
   devmode = d['pDevMode']
@@ -67,8 +131,18 @@ def main(argv):
   #if d[18]:
     #print "Printer not ready"
   #print ':'.join(x.encode('hex') for x in devmode.DriverData)
-  devmode.PaperLength = 381
-  devmode.PaperWidth = 381
+
+  devmode.PaperLength = paperWidth  # in 0.1mm
+  devmode.PaperWidth = paperLength # in 0.1mm
+  # paper for square sticker
+  # devmode.PaperLength = 381 # in 0.1mm
+  # devmode.PaperWidth = 381 # in 0.1mm
+  # paper for hello my name is
+  #devmode.PaperLength = 2400  # in 0.1mm
+  #devmode.PaperWidth = 1800 # in 0.1mm
+  # paper for flipbook
+  #devmode.PaperLength = 411  # in 0.1mm
+  #devmode.PaperWidth = 1079 # in 0.1mm
   win32print.SetPrinter(printer, 2, d, 0)
 
 ###  dmsize=win32print.DocumentProperties(0, printer, printer_name, None, None, 0)
@@ -107,18 +181,36 @@ def main(argv):
   #  each pixel by to get it as big as possible on
   #  the page without distorting.
   #
+  open (file_name)
   bmp = Image.open (file_name)
-  if bmp.size[0] > bmp.size[1]:
-    bmp = bmp.rotate (90)
+  #if bmp.size[0] > bmp.size[1]:
+  #  bmp = bmp.rotate (90)
+  #  bmp = bmp.rotate (180)
+  if rotate != 0:
+      bmp = bmp.rotate (rotate)
   print "bmp size", bmp.size
   ratios = [1.0 * printable_area[0] / bmp.size[0], 1.0 * printable_area[1] / bmp.size[1]]
-  scale = min (ratios)
+  # fit to page
+  if objectFit == "contain":
+    scale = min (ratios)
+  elif objectFit == "cover":
+    scale = max (ratios)
 
   scaled_width, scaled_height = [int (scale * i) for i in bmp.size]
   x1 = int ((printer_size[0] - scaled_width) / 2)
   y1 = int ((printer_size[1] - scaled_height) / 2)
   x2 = x1 + scaled_width
   y2 = y1 + scaled_height
+
+  # align right
+  #x1 = (printer_size[0] - scaled_width)
+  #x2 = x1 + scaled_width
+  #scale = printer_size[1] / bmp.size[0]
+  #x1 = 0
+  #y1 = 0
+  #x2 = 360
+  #y2 = 446
+  
   print "print rect: ", x1, y1, x2, y2
   #sys.exit()
   
