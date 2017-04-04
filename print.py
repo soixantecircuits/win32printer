@@ -169,8 +169,8 @@ def main(argv):
   printable_area = hDC.GetDeviceCaps (HORZRES), hDC.GetDeviceCaps (VERTRES)
   printer_size = hDC.GetDeviceCaps (PHYSICALWIDTH), hDC.GetDeviceCaps (PHYSICALHEIGHT)
   printer_margins = hDC.GetDeviceCaps (PHYSICALOFFSETX), hDC.GetDeviceCaps (PHYSICALOFFSETY)
-  #printable_area = (900, 900)
-  #printer_size = (900, 900)
+  #printable_area = (350*3, 1412*3)
+  #printer_size = (350*3, 1412*3)
   print "printer area", printable_area
   print "printer size", printer_size
   print "printer margins", printer_margins
@@ -195,8 +195,9 @@ def main(argv):
     scale = min (ratios)
   elif objectFit == "cover":
     scale = max (ratios)
-
+  
   scaled_width, scaled_height = [int (scale * i) for i in bmp.size]
+  bmp = bmp.resize((scaled_width, scaled_height), Image.HAMMING)
   x1 = int ((printer_size[0] - scaled_width) / 2)
   y1 = int ((printer_size[1] - scaled_height) / 2)
   x2 = x1 + scaled_width
